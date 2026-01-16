@@ -53,161 +53,75 @@ async function reportWorkflowMetrics(): Promise<string> {
 
   const { userLoadX, systemLoadX } = await getCPUStats()
   const { activeMemoryX, availableMemoryX } = await getMemoryStats()
-  const { networkReadX, networkWriteX } = await getNetworkStats()
-  const { diskReadX, diskWriteX } = await getDiskStats()
-  const { diskAvailableX, diskUsedX } = await getDiskSizeStats()
+  // const { networkReadX, networkWriteX } = await getNetworkStats()
+  // const { diskReadX, diskWriteX } = await getDiskStats()
+  // const { diskAvailableX, diskUsedX } = await getDiskSizeStats()
 
-  const cpuLoad =
+  const cpuXAxis =
+    userLoadX && userLoadX.length ? userLoadX.map(p => p.x) : null
+  const cpuYAxis =
     userLoadX && userLoadX.length && systemLoadX && systemLoadX.length
-      ? await getStackedAreaGraph({
-          label: 'CPU Load (%)',
-          axisColor,
-          areas: [
-            {
-              label: 'User Load',
-              color: '#e41a1c99',
-              points: userLoadX
-            },
-            {
-              label: 'System Load',
-              color: '#ff7f0099',
-              points: systemLoadX
-            }
-          ]
-        })
+      ? userLoadX.map((p, i) => p.y + systemLoadX[i].y)
       : null
+  const userCpuYAxis =
+    userLoadX && userLoadX.length ? userLoadX.map(p => p.y) : null
 
-  const memoryUsage =
+  const memoryXAxis =
+    activeMemoryX && activeMemoryX.length ? activeMemoryX.map(p => p.x) : null
+  const memoryYAxis =
     activeMemoryX &&
     activeMemoryX.length &&
     availableMemoryX &&
     availableMemoryX.length
-      ? await getStackedAreaGraph({
-          label: 'Memory Usage (MB)',
-          axisColor,
-          areas: [
-            {
-              label: 'Used',
-              color: '#377eb899',
-              points: activeMemoryX
-            },
-            {
-              label: 'Free',
-              color: '#4daf4a99',
-              points: availableMemoryX
-            }
-          ]
-        })
+      ? activeMemoryX.map((p, i) => p.y + availableMemoryX[i].y)
       : null
-
-  const networkIORead =
-    networkReadX && networkReadX.length
-      ? await getLineGraph({
-          label: 'Network I/O Read (MB)',
-          axisColor,
-          line: {
-            label: 'Read',
-            color: '#be4d25',
-            points: networkReadX
-          }
-        })
-      : null
-
-  const networkIOWrite =
-    networkWriteX && networkWriteX.length
-      ? await getLineGraph({
-          label: 'Network I/O Write (MB)',
-          axisColor,
-          line: {
-            label: 'Write',
-            color: '#6c25be',
-            points: networkWriteX
-          }
-        })
-      : null
-
-  const diskIORead =
-    diskReadX && diskReadX.length
-      ? await getLineGraph({
-          label: 'Disk I/O Read (MB)',
-          axisColor,
-          line: {
-            label: 'Read',
-            color: '#be4d25',
-            points: diskReadX
-          }
-        })
-      : null
-
-  const diskIOWrite =
-    diskWriteX && diskWriteX.length
-      ? await getLineGraph({
-          label: 'Disk I/O Write (MB)',
-          axisColor,
-          line: {
-            label: 'Write',
-            color: '#6c25be',
-            points: diskWriteX
-          }
-        })
-      : null
-
-  const diskSizeUsage =
-    diskUsedX && diskUsedX.length && diskAvailableX && diskAvailableX.length
-      ? await getStackedAreaGraph({
-          label: 'Disk Usage (MB)',
-          axisColor,
-          areas: [
-            {
-              label: 'Used',
-              color: '#377eb899',
-              points: diskUsedX
-            },
-            {
-              label: 'Free',
-              color: '#4daf4a99',
-              points: diskAvailableX
-            }
-          ]
-        })
+  const activeMemoryYAxis =
+    activeMemoryX && activeMemoryX.length
+      ? activeMemoryX.map((p, i) => p.y)
       : null
 
   const postContentItems: string[] = []
-  if (cpuLoad) {
+  if (cpuXAxis && cpuYAxis && userCpuYAxis) {
     postContentItems.push(
       '### CPU Metrics',
-      `![${cpuLoad.id}](${cpuLoad.url})`,
+      '```mermaid',
+      '---',
+      'config:',
+      '    xyChart:',
+      '        xAxis:',
+      '            showLabel: false',
+      '    themeVariables:',
+      '        xyChart:',
+      `            plotColorPalette: '#5ABFBF, #F86886'`,
+      '---',
+      'xychart',
+      '    title "CPU Load (%)"',
+      `    x-axis [${cpuXAxis}]`,
+      `    bar [${cpuYAxis}]`,
+      `    bar [${userCpuYAxis}]`,
+      '```',
       ''
     )
   }
-  if (memoryUsage) {
+  if (memoryXAxis && memoryYAxis && activeMemoryYAxis) {
     postContentItems.push(
       '### Memory Metrics',
-      `![${memoryUsage.id}](${memoryUsage.url})`,
-      ''
-    )
-  }
-  if ((networkIORead && networkIOWrite) || (diskIORead && diskIOWrite)) {
-    postContentItems.push(
-      '### IO Metrics',
-      '|               | Read      | Write     |',
-      '|---            |---        |---        |'
-    )
-  }
-  if (networkIORead && networkIOWrite) {
-    postContentItems.push(
-      `| Network I/O   | ![${networkIORead.id}](${networkIORead.url})        | ![${networkIOWrite.id}](${networkIOWrite.url})        |`
-    )
-  }
-  if (diskIORead && diskIOWrite) {
-    postContentItems.push(
-      `| Disk I/O      | ![${diskIORead.id}](${diskIORead.url})              | ![${diskIOWrite.id}](${diskIOWrite.url})              |`
-    )
-  }
-  if (diskSizeUsage) {
-    postContentItems.push(
-      '### Disk Size Metrics',
-      `![${diskSizeUsage.id}](${diskSizeUsage.url})`,
+      '```mermaid',
+      '---',
+      'config:',
+      '    xyChart:',
+      '        xAxis:',
+      '            showLabel: false',
+      '    themeVariables:',
+      '        xyChart:',
+      `            plotColorPalette: '#F5F5F5, #F86886'`,
+      '---',
+      'xychart',
+      '    title "Memory Usage (MB)"',
+      `    x-axis [${memoryXAxis}]`,
+      `    bar [${memoryYAxis}]`,
+      `    bar [${activeMemoryYAxis}]`,
+      '```',
       ''
     )
   }
